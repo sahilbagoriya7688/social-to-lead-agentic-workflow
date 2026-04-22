@@ -43,12 +43,9 @@ with st.sidebar:
 
     if st.button("Clear Conversation", use_container_width=True):
         st.session_state.messages = []
-        st.session_state.leads_captured = 0
         st.rerun()
 
     st.markdown("---")
-
-    # Leads captured counter
     st.subheader("Captured Leads")
     leads_count = orchestrator.lead_capture_tool.get_leads_summary()["total_leads"]
     st.metric("Leads", leads_count)
@@ -62,7 +59,6 @@ with st.sidebar:
         "I want to try it for my business",
         "I'm ready to sign up!"
     ]
-
     for question in sample_questions:
         if st.button(question, use_container_width=True, key=f"sample_{question}"):
             st.session_state.pending_message = question
@@ -74,8 +70,6 @@ st.caption("Social-to-Lead Agentic Workflow | Powered by Gemini + RAG")
 # Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "leads_captured" not in st.session_state:
-    st.session_state.leads_captured = 0
 if "pending_message" not in st.session_state:
     st.session_state.pending_message = None
 
@@ -102,45 +96,31 @@ for message in st.session_state.messages:
 if st.session_state.pending_message:
     user_input = st.session_state.pending_message
     st.session_state.pending_message = None
-
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_input)
-
     with st.chat_message("assistant", avatar="🤖"):
         with st.spinner("Thinking..."):
             result = orchestrator.process_message(user_input)
-            response = result.get("response", "Sorry, I could not process that.")
+            response = result.get("message", result.get("response", "Sorry, I could not process that."))
             intent = result.get("intent", "unknown")
         st.markdown(response)
         st.caption(f"Intent: {intent}")
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response,
-        "intent": intent
-    })
+    st.session_state.messages.append({"role": "assistant", "content": response, "intent": intent})
     st.rerun()
 
 # Chat input
 user_input = st.chat_input("Ask me about Inflix...")
-
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_input)
-
     with st.chat_message("assistant", avatar="🤖"):
         with st.spinner("Thinking..."):
             result = orchestrator.process_message(user_input)
-            response = result.get("response", "Sorry, I could not process that.")
+            response = result.get("message", result.get("response", "Sorry, I could not process that."))
             intent = result.get("intent", "unknown")
         st.markdown(response)
         st.caption(f"Intent: {intent}")
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response,
-        "intent": intent
-    })
+    st.session_state.messages.append({"role": "assistant", "content": response, "intent": intent})
     st.rerun()
