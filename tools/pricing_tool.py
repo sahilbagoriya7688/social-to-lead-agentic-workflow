@@ -64,51 +64,51 @@ PRICING_DATA = {
 
 class PricingTool:
     """Tool for retrieving and formatting Inflix pricing information."""
-    
+
     def get_pricing(self, plan_name=None):
         """
         Get formatted pricing information.
-        
+
         Args:
             plan_name: Specific plan to get info for (optional)
-            
+
         Returns:
             Formatted pricing string
         """
         if plan_name:
             return self._get_plan_details(plan_name)
         return self._get_all_plans()
-    
+
     def _get_all_plans(self):
         """Get formatted pricing for all plans."""
         lines = ["**Inflix Pricing Plans**\n"]
-        
+
         for p in PRICING_DATA["plans"]:
             if p["price"]:
                 price_str = f"${p['price']}/{p['billing']}"
             else:
                 price_str = "Custom pricing"
             popular = " (Most Popular)" if p.get("most_popular") else ""
-            
+
             lines.append(f"**{p['name']} Plan - {price_str}**{popular}")
             lines.append(f"_{p['description']}_")
-            
+
             for feature in p["features"][:4]:
                 lines.append(f"  - {feature}")
-            
+
             if len(p["features"]) > 4:
                 lines.append(f"  + {len(p['features']) - 4} more features")
-            
+
             lines.append("")
-        
+
         lines.append(f"Note: {PRICING_DATA['annual_discount']}")
         lines.append(f"Free Trial: {PRICING_DATA['free_trial']}")
-        
+
         return "\n".join(lines)
-    
+
     def _get_plan_details(self, plan_name):
         """Get detailed info for a specific plan."""
-        for p in PRICING_DATA["plans"]:tools/pricing_tool.py
+        for p in PRICING_DATA["plans"]:
             if p["name"].lower() == plan_name.lower():
                 if p["price"]:
                     price_str = f"${p['price']}/{p['billing']}"
