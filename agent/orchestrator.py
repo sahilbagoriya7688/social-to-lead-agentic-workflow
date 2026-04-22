@@ -39,7 +39,7 @@ class AgentOrchestrator:
         
         self.conversation_history = []
         self.current_lead_info = {}
-        self.lead_capture_stage = None  # None, 'asking_name', 'asking_email', 'asking_company'
+        self.lead_capture_stage = None
         
         logger.info("AgentOrchestrator initialized successfully")
     
@@ -63,56 +63,58 @@ class AgentOrchestrator:
             "timestamp": datetime.now().isoformat()
         })
         
-        # Handle lead capture flow if in progress
-        if self.lead_capture_stage:
-            response, lead_captured = self._handle_lead_capture_flow(user_message)
-            intent = IntentLevel.HIGH_INTENT
-            if lead_captured:
-                tools_used.append("lead_capture")
-        else:
-            # Step 1: Detect intent
-            intent = self.intent_detector.detect(user_message, self.conversation_history)
-            logger.info(f"Detected intent: {intent}")
-            
-            # Step 2: Retrieve relevant context via RAG
-            rag_context = self.rag_retriever.retrieve(user_message)
-            
-            # Step 3: Determine which tools to invoke based on intent
-            tool_results = {}
-            
-            if intent == IntentLevel.READY_TO_BUY or intent == IntentLevel.HIGH_INTENT:
-                # Start lead capture flow
-                self.lead_capture_stage = 'asking_name'
-                response = self._generate_lead_capture_prompt(rag_context, intent)
-                tools_used.append("lead_capture_initiated")
-                
-            elif intent == IntentLevel.INTERESTED:
-                # Show pricing information
-                pricing_info = self.pricing_tool.get_pricing()
-                tool_results["pricing"] = pricing_info
-                tools_used.append("pricing_tool")
-                response = self.response_generator.generate(
-                    user_message, rag_context, self.conversation_history, 
-                    intent, tool_results
-                )
-                
+        try:
+            # Handle lead capture flow if in progress
+            if self.lead_capture_stage:
+                response, lead_captured = self._handle_lead_capture_flow(user_message)
+                intent = IntentLevel.HIGH_INTENT
+                if lead_captured:
+                    tools_used.append("lead_capture")
             else:
-                # BROWSING or CURIOUS - just answer with RAG
-                response = self.response_generator.generate(
-                    user_message, rag_context, self.conversation_history,
-                    intent, tool_results
-                )
+                # Step 1: Detect intent
+                intent = self.intent_detector.detect(user_message, self.conversation_history)
+                logger.info(f"Detected intent: {intent}")
+                
+                # Step 2: Retrieve relevant context via RAG
+                rag_context = self.rag_retriever.retrieve(user_message)
+                
+                # Step 3: Determine which tools to invoke based on intent
+                tool_results = {}
+                
+                if intent == IntentLevel.READY_TO_BUY or intent == IntentLevel.HIGH_INTENT:
+                    self.lead_capture_stage = "asking_name"
+                    response = self._generate_lead_capture_prompt(rag_context, intent)
+                    tools_used.append("lead_capture_initiated")
+                    
+                elif intent == IntentLevel.INTERESTED:
+                    pricing_info = self.pricing_tool.get_pricing()
+                    tool_results["pricing"] = pricing_info
+                    tools_used.append("pricing_tool")
+                    response = self.response_generator.generate(
+                        user_message, rag_context, self.conversation_history,
+                        intent, tool_results
+                    )
+                    
+                else:
+                    response = self.response_generator.generate(
+                        user_message, rag_context, self.conversation_history,
+                        intent, {}
+                    )
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            response = "I apologize, I encountered an error. Please try again."
+            intent = IntentLevel.BROWSING
         
-        # Add response to history
+        # Add response to conversation history
         self.conversation_history.append({
-            "role": "assistant", 
+            "role": "assistant",
             "content": response,
             "timestamp": datetime.now().isoformat()
         })
         
         return {
             "message": response,
-            "intent": intent.value if hasattr(intent, 'value') else str(intent),
+            "intent": intent.value if hasattr(intent, "value") else str(intent),
             "tools_used": tools_used,
             "lead_captured": lead_captured
         }
@@ -120,71 +122,77 @@ class AgentOrchestrator:
     def _generate_lead_capture_prompt(self, rag_context: str, intent: IntentLevel) -> str:
         """Generate a response that transitions into lead capture."""
         base_response = self.response_generator.generate(
-            "The user is showing high purchase intent", 
+            "The user is showing high purchase intent. Warmly acknowledge their interest in Inflix.",
             rag_context, self.conversation_history, intent, {}
         )
-        return (base_response + 
-                "\n\nI'd love to help you get started with Inflix! "
-                "Could I get your **name** first?")
+        return (
+            f"{base_response}\n\nI'd love to help you get started with Inflix! "
+            "Could I get your **name** first?"
+        )
     
     def _handle_lead_capture_flow(self, user_message: str):
         """Handle the multi-turn lead capture conversation flow."""
         lead_captured = None
         
-        if self.lead_capture_stage == 'asking_name':
-            self.current_lead_info['name'] = user_message.strip()
-            self.lead_capture_stage = 'asking_email'
+        if self.lead_capture_stage == "asking_name":
+            self.current_lead_info["name"] = user_message.strip()
+            self.lead_capture_stage = "asking_email"
             response = f"Great to meet you, {self.current_lead_info['name']}! What's your **email address**?"
             
-        elif self.lead_capture_stage == 'asking_email':
-            self.current_lead_info['email'] = user_message.strip()
-            self.lead_capture_stage = 'asking_company'
+        elif self.lead_capture_stage == "asking_email":
+            self.current_lead_info["email"] = user_message.strip()
+            self.lead_capture_stage = "asking_company"
             response = "Thanks! And what **company** are you from? (or 'solo' if you're an individual)"
             
-        elif self.lead_capture_stage == 'asking_company':
-            self.current_lead_info['company'] = user_message.strip()
+        elif self.lead_capture_stage == "asking_company":
+            self.current_lead_info["company"] = user_message.strip()
             
-            # Save the lead
-            lead_data = {
-                **self.current_lead_info,
-                "intent": "HIGH_INTENT",
-                "conversation_summary": self._summarize_conversation(),
-                "timestamp": datetime.now().isoformat()
-            }
-            saved_lead = self.lead_capture_tool.capture_lead(lead_data)
+            # Save the lead with correct separate arguments
+            saved_lead = self.lead_capture_tool.capture_lead(
+                name=self.current_lead_info.get("name", ""),
+                email=self.current_lead_info.get("email", ""),
+                company=self.current_lead_info.get("company", ""),
+                interest="Inflix SaaS Platform",
+                source="chat"
+            )
             lead_captured = saved_lead
             
             # Try to book a demo
             booking_info = self.booking_tool.schedule_demo(
-                self.current_lead_info.get('name', ''),
-                self.current_lead_info.get('email', '')
+                self.current_lead_info.get("name", ""),
+                self.current_lead_info.get("email", "")
             )
             
+            name = self.current_lead_info.get("name", "there")
+            email = self.current_lead_info.get("email", "")
+            
             response = (
-                f"🎉 Perfect! I've captured your details, **{self.current_lead_info['name']}**!\n\n"
-                f"Our team will reach out to you at **{self.current_lead_info['email']}** within 24 hours.\n\n"
-                f"{booking_info}\n\n"
-                "In the meantime, feel free to ask me anything else about Inflix!"
+                f"🎉 Perfect! I've captured your details, **{name}**!\n\n"
+                f"Our team will reach out to **{email}** within 24 hours.\n\n"
+                f"**Next Steps:**\n"
+                f"- ✅ Start your **14-day free trial** at inflix.io/trial\n"
+                f"- 📅 {booking_info.get('message', 'A demo has been scheduled for you.')}\n"
+                f"- 📧 Check your email for onboarding details\n\n"
+                f"Is there anything else you'd like to know about Inflix?"
             )
             
             # Reset lead capture state
             self.lead_capture_stage = None
             self.current_lead_info = {}
         else:
-            response = "I'm sorry, something went wrong. Let me start over. What can I help you with?"
-            self.lead_capture_stage = None
-            self.current_lead_info = {}
+            response = "Could I get your **name** to get started?"
+            self.lead_capture_stage = "asking_name"
         
         return response, lead_captured
     
     def _summarize_conversation(self) -> str:
         """Create a brief summary of the conversation for the lead record."""
         user_messages = [
-            msg["content"] for msg in self.conversation_history 
+            msg["content"] for msg in self.conversation_history
             if msg["role"] == "user"
         ]
         if user_messages:
-            return " | ".join(user_messages[-3:])  # Last 3 user messages
+            return " | ".join(user_messages[-3:])
         return "No conversation history"
     
     def get_captured_leads(self) -> list:
