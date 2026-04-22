@@ -50,7 +50,7 @@ with st.sidebar:
 
     # Leads captured counter
     st.subheader("Captured Leads")
-    leads_count = orchestrator.lead_tool.get_leads_summary()["total_leads"]
+    leads_count = orchestrator.lead_capture_tool.get_leads_summary()["total_leads"]
     st.metric("Leads", leads_count)
 
     st.markdown("---")
@@ -82,7 +82,7 @@ if "pending_message" not in st.session_state:
 # Metrics row
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Leads Captured", orchestrator.lead_tool.get_leads_summary()["total_leads"])
+    st.metric("Leads Captured", orchestrator.lead_capture_tool.get_leads_summary()["total_leads"])
 with col2:
     st.metric("Messages", len(st.session_state.messages))
 with col3:
