@@ -1,20 +1,18 @@
 """
-Intent Detector - Classifies user messages into intent levels
-to determine how to route the conversation.
-Uses Google Gemini API (free tier).
+Intent Detector - Classifies user intent using Google Gemini AI.
+Detects purchase intent levels from conversational messages.
 """
 
 import os
 import logging
 from enum import Enum
-from typing import List
-import google.generativeai as genai
+from typing import List, Dict
+from google import genai
 
 logger = logging.getLogger(__name__)
 
 
 class IntentLevel(Enum):
-    """Intent levels from lowest to highest purchase intent."""
     BROWSING = "BROWSING"
     CURIOUS = "CURIOUS"
     INTERESTED = "INTERESTED"
@@ -22,115 +20,96 @@ class IntentLevel(Enum):
     READY_TO_BUY = "READY_TO_BUY"
 
 
-INTENT_SYSTEM_PROMPT = """You are an intent classifier for Inflix, an AI-powered social media automation SaaS.
-
-Classify the user message into ONE of these intent levels:
-
-1. BROWSING - Just exploring, no specific interest. E.g. "hi", "hello"
-2. CURIOUS - Asking general questions. E.g. "what does Inflix do?"
-3. INTERESTED - Asking about features or pricing. E.g. "how much does it cost?", "what features do you have?"
-4. HIGH_INTENT - Actively evaluating, wants demo/trial. E.g. "can I try it?", "I want to see a demo"
-5. READY_TO_BUY - Ready to sign up. E.g. "I want to sign up", "let's get started", "I'm ready to buy"
-
-Respond with ONLY the intent level name (e.g., "CURIOUS"), nothing else."""
+INTENT_KEYWORDS = {
+    IntentLevel.READY_TO_BUY: [
+        "sign up", "signup", "register", "buy now", "purchase", "subscribe",
+        "ready to buy", "ready to sign", "i want to buy", "take my money",
+        "get started", "start now", "ready", "let's go", "yes please"
+    ],
+    IntentLevel.HIGH_INTENT: [
+        "i want to try", "want to try", "interested in buying", "how do i sign up",
+        "where do i sign up", "i'm in", "book a demo", "schedule demo",
+        "free trial", "try it", "want it", "need this", "this is great",
+        "i want this", "sign me up", "count me in"
+    ],
+    IntentLevel.INTERESTED: [
+        "how much", "price", "pricing", "cost", "plans", "subscription",
+        "compare", "vs", "versus", "better than", "features", "what can",
+        "does it", "can it", "will it", "is it", "monthly", "annually",
+        "discount", "offer", "deal", "cheap", "affordable", "expensive"
+    ],
+    IntentLevel.CURIOUS: [
+        "what is", "how does", "tell me", "explain", "works with", "support",
+        "instagram", "twitter", "facebook", "linkedin", "tiktok", "youtube",
+        "analytics", "schedule", "post", "caption", "ai", "automation",
+        "whatsapp", "platform", "integration", "api", "connect"
+    ],
+}
 
 
 class IntentDetector:
-    """
-    Detects user intent using Google Gemini API.
-    Falls back to keyword-based detection if API is unavailable.
-    """
+    """Detects user intent using Gemini AI with keyword fallback."""
 
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(
-                model_name=os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-            )
+            try:
+                self.client = genai.Client(api_key=api_key)
+                self.model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+                logger.info(f"IntentDetector initialized with model: {self.model}")
+            except Exception as e:
+                logger.error(f"Failed to init Gemini client: {e}")
+                self.client = None
+                self.model = None
         else:
+            self.client = None
             self.model = None
             logger.warning("GEMINI_API_KEY not set, using keyword fallback")
 
-        # Keyword-based fallback
-        self.intent_keywords = {
-            IntentLevel.READY_TO_BUY: [
-                "sign up", "buy", "purchase", "subscribe", "get started",
-                "ready to", "let's do", "i want to start", "how do i pay",
-                "billing", "checkout", "take my money"
-            ],
-            IntentLevel.HIGH_INTENT: [
-                "demo", "trial", "free trial", "test it", "try it",
-                "compare", "vs", "better than", "competitor", "switch from",
-                "onboarding", "setup", "migrate", "can i try"
-            ],
-            IntentLevel.INTERESTED: [
-                "price", "cost", "pricing", "plan", "feature", "integration",
-                "does it", "can it", "support", "work with", "connect",
-                "how many", "limit", "how much"
-            ],
-            IntentLevel.CURIOUS: [
-                "what is", "what does", "how does", "explain", "tell me",
-                "why", "who is", "what kind", "what can"
-            ]
-        }
-
-    def detect(self, message: str, conversation_history: List[dict] = None) -> IntentLevel:
+    def detect(self, user_message: str, conversation_history: List[Dict] = None) -> IntentLevel:
         """Detect the intent level of a user message."""
-        try:
-            if self.model:
-                return self._detect_with_gemini(message, conversation_history or [])
-            return self._detect_with_keywords(message)
-        except Exception as e:
-            logger.warning(f"Gemini intent detection failed: {e}. Using keyword fallback.")
-            return self._detect_with_keywords(message)
+        if self.client:
+            try:
+                return self._detect_with_gemini(user_message, conversation_history)
+            except Exception as e:
+                logger.error(f"Gemini intent detection failed: {e}. Using keyword fallback.")
+        return self._detect_with_keywords(user_message)
 
-    def _detect_with_gemini(self, message: str, conversation_history: List[dict]) -> IntentLevel:
+    def _detect_with_gemini(self, user_message: str, conversation_history: List[Dict] = None) -> IntentLevel:
         """Use Gemini to classify intent."""
-        # Build context from recent history
-        history_context = ""
-        if conversation_history:
-            recent = conversation_history[-4:]
-            history_context = "Recent conversation:\n"
-            for turn in recent:
-                role = "User" if turn["role"] == "user" else "Assistant"
-                history_context += f"{role}: {turn['content'][:150]}\n"
+        prompt = f"""Classify the purchase intent of this message for a SaaS product.
 
-        prompt = f"{INTENT_SYSTEM_PROMPT}\n\n{history_context}\nCurrent message: {message}"
+Intent levels:
+- READY_TO_BUY: User wants to sign up or buy right now
+- HIGH_INTENT: User wants to try or is very interested in starting
+- INTERESTED: User asking about pricing, features, or comparisons
+- CURIOUS: User asking general questions about the product
+- BROWSING: Just exploring or off-topic
 
-        response = self.model.generate_content(prompt)
-        intent_str = response.text.strip().upper()
+Message: "{user_message}"
 
-        intent_map = {
-            "BROWSING": IntentLevel.BROWSING,
-            "CURIOUS": IntentLevel.CURIOUS,
-            "INTERESTED": IntentLevel.INTERESTED,
-            "HIGH_INTENT": IntentLevel.HIGH_INTENT,
-            "READY_TO_BUY": IntentLevel.READY_TO_BUY
-        }
-        return intent_map.get(intent_str, IntentLevel.CURIOUS)
+Reply with ONLY one of: READY_TO_BUY, HIGH_INTENT, INTERESTED, CURIOUS, BROWSING"""
 
-    def _detect_with_keywords(self, message: str) -> IntentLevel:
-        """Keyword-based fallback intent detection."""
-        message_lower = message.lower()
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt
+        )
+        result = response.text.strip().upper()
+        for level in IntentLevel:
+            if level.value in result:
+                return level
+        return IntentLevel.BROWSING
+
+    def _detect_with_keywords(self, user_message: str) -> IntentLevel:
+        """Fallback keyword-based intent detection."""
+        msg = user_message.lower()
         for intent_level in [
             IntentLevel.READY_TO_BUY,
             IntentLevel.HIGH_INTENT,
             IntentLevel.INTERESTED,
-            IntentLevel.CURIOUS
+            IntentLevel.CURIOUS,
         ]:
-            keywords = self.intent_keywords.get(intent_level, [])
-            if any(keyword in message_lower for keyword in keywords):
+            keywords = INTENT_KEYWORDS.get(intent_level, [])
+            if any(kw in msg for kw in keywords):
                 return intent_level
         return IntentLevel.BROWSING
-
-    def get_intent_description(self, intent: IntentLevel) -> str:
-        """Get a human-readable description of an intent level."""
-        descriptions = {
-            IntentLevel.BROWSING: "Just browsing, no specific interest",
-            IntentLevel.CURIOUS: "Asking general questions",
-            IntentLevel.INTERESTED: "Genuinely interested in features/pricing",
-            IntentLevel.HIGH_INTENT: "Actively evaluating the product",
-            IntentLevel.READY_TO_BUY: "Ready to sign up or purchase"
-        }
-        return descriptions.get(intent, "Unknown intent")
