@@ -1,0 +1,55 @@
+{
+  "product": "Inflix",
+  "version": "1.0",
+  "description": "AI-powered social media automation SaaS",
+  "documents": [
+    {
+      "id": "doc_001",
+      "title": "Inflix Product Overview",
+      "category": "overview",
+      "content": "Inflix is an AI-powered social media automation platform designed for businesses, agencies, and content creators. It combines intelligent scheduling, AI-driven content generation, and deep analytics to help you grow your social media presence efficiently and authentically.\n\nCore Mission: Help businesses of all sizes compete on social media by automating the tedious parts while keeping the human touch.\n\nKey Differentiators:\n- AI that learns your brand voice\n- Predictive analytics for optimal posting times\n- Multi-platform management from one dashboard\n- Built-in content library and asset management"
+    },
+    {
+      "id": "doc_002",
+      "title": "Supported Platforms",
+      "category": "features",
+      "content": "Inflix supports all major social media platforms:\n\nFully Supported:\n- Instagram (posts, stories, reels, carousels)\n- Twitter/X (tweets, threads, polls)\n- LinkedIn (posts, articles, company pages)\n- Facebook (pages, groups, stories)\n- TikTok (videos, duets, stitches)\n\nPartially Supported:\n- Pinterest (pins, boards)\n- YouTube (shorts, community posts)\n- Snapchat (stories)\n\nAll platforms can be managed from a single unified dashboard."
+    },
+    {
+      "id": "doc_003",
+      "title": "AI Content Generation",
+      "category": "features",
+      "content": "Inflix AI Content Generation Features:\n\n1. Caption Generator: Creates engaging captions based on your image/video content, brand voice profile, and target audience demographics. Supports 25+ languages.\n\n2. Hashtag AI: Analyzes trending hashtags in real-time and suggests optimal hashtag sets for each post. Includes reach estimations.\n\n3. Image Suggestions: Recommends Unsplash/Getty images or suggests Canva templates that match your content theme.\n\n4. Content Calendar AI: Generates a full month of content ideas based on your industry, audience, and upcoming events.\n\n5. A/B Testing: Automatically creates variations of captions to test which performs better."
+    },
+    {
+      "id": "doc_004",
+      "title": "Analytics & Reporting",
+      "category": "features",
+      "content": "Inflix Analytics Dashboard:\n\nPost Performance:\n- Reach, impressions, engagement rate\n- Click-through rates and link tracking\n- Best performing post formats and times\n\nAudience Insights:\n- Demographics (age, location, gender, interests)\n- Growth tracking and follower analysis\n- Audience activity patterns\n\nCompetitor Analysis (Growth+ plans):\n- Track up to 10 competitor accounts\n- Benchmark your metrics against industry averages\n- Identify content gaps and opportunities\n\nCustom Reports:\n- White-label PDF reports for client presentations\n- Scheduled email reports (weekly/monthly)"
+    },
+    {
+      "id": "doc_005",
+      "title": "Pricing & Plans",
+      "category": "pricing",
+      "content": "Inflix Pricing Plans (billed monthly, 20% off annually):\n\nStarter Plan - $29/month\n- 5 social accounts\n- 30 scheduled posts/month\n- Basic analytics\n- AI caption generation (50 credits/month)\n- Email support\n- 14-day free trial\n\nGrowth Plan - $79/month (Most Popular)\n- 15 social accounts\n- Unlimited scheduled posts\n- Advanced analytics + competitor tracking (5 accounts)\n- AI content generation (500 credits/month)\n- Priority live chat support\n- 3 team seats\n- Content calendar\n- Canva + Google Drive integrations\n- 14-day free trial\n\nEnterprise Plan - Custom pricing\n- Unlimited accounts\n- Unlimited AI credits\n- Custom AI brand voice training\n- Dedicated success manager\n- SSO, SAML, advanced security\n- Full API + webhooks\n- White-label options\n- Custom SLA\n\nAll plans include a 14-day free trial. No credit card required."
+    },
+    {
+      "id": "doc_006",
+      "title": "Integrations",
+      "category": "integrations",
+      "content": "Inflix Integrations:\n\nDesign Tools:\n- Canva (import designs directly)\n- Adobe Express\n- Figma (beta)\n\nStorage:\n- Google Drive\n- Dropbox\n- OneDrive\n\nCommunication:\n- Slack (post notifications, approval workflows)\n- Microsoft Teams\n\nCRM & Marketing:\n- HubSpot (lead sync)\n- Salesforce (enterprise)\n- Mailchimp (campaign coordination)\n\nE-commerce:\n- Shopify (product posts)\n- WooCommerce\n\nAnalytics:\n- Google Analytics (traffic attribution)\n- Google Data Studio\n\nAutomation:\n- Zapier (1000+ app connections)\n- Make (formerly Integromat)\n\nAPI: Full REST API available on Growth and Enterprise plans with webhooks support."
+    },
+    {
+      "id": "doc_007",
+      "title": "Getting Started & Onboarding",
+      "category": "onboarding",
+      "content": "Getting Started with Inflix:\n\nStep 1: Sign Up (2 minutes)\n- Go to inflix.ai\n- Enter email and create password\n- No credit card required for 14-day trial\n\nStep 2: Connect Social Accounts (3 minutes)\n- Click 'Add Account' for each platform\n- Authorize Inflix via OAuth\n- Accounts connected instantly\n\nStep 3: Set Up Brand Voice (5 minutes)\n- Fill in brand name, industry, tone\n- Add sample posts you love\n- AI learns your style\n\nStep 4: Create Your First Post (2 minutes)\n- Upload media or use AI to find images\n- Click 'Generate Caption'\n- Review, edit, and schedule\n\nStep 5: Set Auto-Schedule\n- Enable Smart Schedule\n- AI picks best times based on your audience\n- Sit back and let Inflix work!\n\nSupport: 24/7 live chat, extensive knowledge base, video tutorials, and weekly webinars."
+    },
+    {
+      "id": "doc_008",
+      "title": "Security & Compliance",
+      "category": "security",
+      "content": "Inflix Security:\n\nData Security:\n- SOC 2 Type II certified\n- End-to-end encryption (TLS 1.3)\n- Data stored on AWS with AES-256 encryption\n- Regular third-party security audits\n\nPrivacy:\n- GDPR compliant\n- CCPA compliant\n- No selling of user data\n- Data deletion requests honored within 30 days\n\nAccess Control:\n- Role-based access (Admin, Editor, Viewer)\n- SSO/SAML support (Enterprise)\n- Two-factor authentication (all plans)\n- IP whitelisting (Enterprise)\n\nSocial Account Safety:\n- OAuth-only connections (no passwords stored)\n- Minimal permission scopes requested\n- Instant account disconnect option"
+    }
+  ]
+}
