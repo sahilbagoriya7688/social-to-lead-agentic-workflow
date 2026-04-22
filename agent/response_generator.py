@@ -25,19 +25,19 @@ About Inflix:
 - 14-day free trial on all plans, no credit card required
 
 Guidelines:
-- Be friendly, helpful, and professional
-- Give concise but complete answers
-- Use the provided product documentation context to answer accurately
-- If you don't know something, say so honestly
-- Never make up features or pricing not in the context
-- Tailor your response based on the detected intent level"""
+- Be friendly, helpful, and concise
+- Focus on Inflix features and benefits
+- Encourage users to try the free trial
+- If asked about pricing, mention all three plans
+- Keep responses under 150 words unless detailed explanation is needed
+"""
 
 INTENT_INSTRUCTIONS = {
-    IntentLevel.BROWSING: "Keep response brief and welcoming. Introduce Inflix at a high level.",
-    IntentLevel.CURIOUS: "Answer the question clearly. Highlight one or two compelling features.",
-    IntentLevel.INTERESTED: "Give detailed answers. Mention pricing and free trial offer.",
-    IntentLevel.HIGH_INTENT: "Be enthusiastic. Emphasize value, mention free trial, guide toward getting started.",
-    IntentLevel.READY_TO_BUY: "Express excitement. Make the path to signing up super clear and easy."
+    IntentLevel.BROWSING: "The user is just exploring. Give a warm welcome and brief product overview.",
+    IntentLevel.CURIOUS: "The user has a specific question. Answer it directly using the product documentation provided.",
+    IntentLevel.INTERESTED: "The user is interested. Highlight the value proposition and mention the free trial.",
+    IntentLevel.HIGH_INTENT: "The user wants to buy. Acknowledge their interest enthusiastically.",
+    IntentLevel.READY_TO_BUY: "The user is ready to sign up. Be very enthusiastic and helpful.",
 }
 
 
@@ -50,9 +50,9 @@ class ResponseGenerator:
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(
-                model_name=os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-            )
+            model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            self.model = genai.GenerativeModel(model_name=model_name)
+            logger.info(f"ResponseGenerator initialized with model: {model_name}")
         else:
             self.model = None
             logger.warning("GEMINI_API_KEY not set, responses will use fallback")
@@ -65,81 +65,74 @@ class ResponseGenerator:
         intent: IntentLevel,
         tool_results: Dict[str, Any] = None
     ) -> str:
-        """
-        Generate a response using Gemini with full context.
+        """Generate a response using Gemini with full context."""
+        if not self.model:
+            return self._fallback_response(user_message, intent)
 
-        Args:
-            user_message: The user's current message
-            rag_context: Retrieved product documentation context
-            conversation_history: Previous conversation turns
-            intent: Detected intent level
-            tool_results: Results from any tools that were invoked
-
-        Returns:
-            Generated response string
-        """
         try:
-            if self.model:
-                return self._generate_with_gemini(
-                    user_message, rag_context, conversation_history, intent, tool_results or {}
-                )
+            # Build prompt
+            context_parts = [SYSTEM_PROMPT]
+
+            if rag_context:
+                context_parts.append(f"\nPRODUCT DOCUMENTATION:\n{rag_context}")
+
+            if tool_results:
+                for tool_name, result in tool_results.items():
+                    context_parts.append(f"\nTOOL RESULT ({tool_name}):\n{result}")
+
+            intent_instruction = INTENT_INSTRUCTIONS.get(intent, "")
+            if intent_instruction:
+                context_parts.append(f"\nINTENT: {intent_instruction}")
+
+            if conversation_history:
+                context_parts.append("\nCONVERSATION HISTORY:")
+                for turn in conversation_history[-4:]:
+                    role = "User" if turn["role"] == "user" else "Assistant"
+                    context_parts.append(f"{role}: {turn['content'][:200]}")
+
+            context_parts.append(f"\nUser: {user_message}\nAssistant:")
+            full_prompt = "\n".join(context_parts)
+
+            # Call Gemini API
+            response = self.model.generate_content(full_prompt)
+            text = response.text.strip()
+            if text:
+                return text
             return self._fallback_response(user_message, intent)
+
         except Exception as e:
-            logger.error(f"Response generation failed: {e}")
+            logger.error(f"Gemini API error: {e}")
             return self._fallback_response(user_message, intent)
-
-    def _generate_with_gemini(
-        self,
-        user_message: str,
-        rag_context: str,
-        conversation_history: List[Dict],
-        intent: IntentLevel,
-        tool_results: Dict[str, Any]
-    ) -> str:
-        """Use Gemini to generate a response."""
-
-        # Build full prompt
-        context_parts = [SYSTEM_PROMPT]
-
-        if rag_context:
-            context_parts.append(f"\nPRODUCT DOCUMENTATION:\n{rag_context}")
-
-        if tool_results:
-            for tool_name, result in tool_results.items():
-                context_parts.append(f"\nTOOL RESULT ({tool_name}):\n{result}")
-
-        intent_instruction = INTENT_INSTRUCTIONS.get(intent, "")
-        if intent_instruction:
-            context_parts.append(f"\nINTENT LEVEL: {intent.value}\nINSTRUCTION: {intent_instruction}")
-
-        # Add recent conversation history
-        if conversation_history:
-            context_parts.append("\nCONVERSATION HISTORY:")
-            for turn in conversation_history[-6:]:
-                role = "User" if turn["role"] == "user" else "Assistant"
-                context_parts.append(f"{role}: {turn['content'][:300]}")
-
-        context_parts.append(f"\nUser: {user_message}\nAssistant:")
-
-        full_prompt = "\n".join(context_parts)
-
-        response = self.model.generate_content(
-            full_prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=500,
-            )
-        )
-
-        return response.text.strip()
 
     def _fallback_response(self, user_message: str, intent: IntentLevel) -> str:
         """Fallback response when API is unavailable."""
+        msg = user_message.lower()
+
+        if "instagram" in msg or "tiktok" in msg or "twitter" in msg or "social" in msg:
+            return ("Yes! Inflix supports Instagram, TikTok, Twitter/X, LinkedIn, and Facebook. "
+                    "You can schedule posts, generate AI captions, and track analytics — all in one place! "
+                    "Want to start a free 14-day trial?")
+
+        if "price" in msg or "cost" in msg or "plan" in msg or "much" in msg:
+            return ("Inflix has 3 plans:\n"
+                    "- **Starter** - $29/month (up to 5 accounts)\n"
+                    "- **Growth** - $79/month (up to 15 accounts, most popular)\n"
+                    "- **Enterprise** - Custom pricing\n"
+                    "All plans include a **14-day free trial**, no credit card required!")
+
+        if "what" in msg or "does" in msg or "how" in msg or "feature" in msg:
+            return ("Inflix is an AI-powered social media automation platform! It helps you:\n"
+                    "- 📅 Schedule posts across all platforms\n"
+                    "- 🤖 Generate AI captions and hashtags\n"
+                    "- 📊 Track analytics and competitor performance\n"
+                    "- ⏰ Find optimal posting times\n"
+                    "Would you like to know more or try it free for 14 days?")
+
         fallbacks = {
-            IntentLevel.BROWSING: "Hi! Welcome to Inflix - your AI-powered social media automation platform! How can I help you today?",
-            IntentLevel.CURIOUS: "Great question! Inflix is an AI-powered social media tool that helps you schedule posts, generate captions, and track analytics across Instagram, Twitter, LinkedIn, Facebook, and TikTok. Would you like to know more?",
-            IntentLevel.INTERESTED: "Inflix offers three plans: Starter ($29/mo), Growth ($79/mo), and Enterprise (custom). All plans include a 14-day free trial with no credit card required! Which features are most important to you?",
-            IntentLevel.HIGH_INTENT: "I'd love to set you up with a free trial! Inflix offers a 14-day free trial on all plans. You can get started in under 10 minutes at inflix.ai. Would you like me to capture your details to get you set up?",
-            IntentLevel.READY_TO_BUY: "Fantastic! Let's get you started with Inflix! Could I get your name and email so our team can set you up right away?"
+            IntentLevel.BROWSING: "Hi! Welcome to Inflix — your AI-powered social media automation platform! How can I help you today?",
+            IntentLevel.CURIOUS: "Great question! Inflix helps you automate social media with AI. It supports Instagram, TikTok, Twitter, LinkedIn and Facebook. Would you like to know more?",
+            IntentLevel.INTERESTED: "Inflix offers Starter ($29/mo), Growth ($79/mo), and Enterprise plans. All include a 14-day free trial! What would you like to know more about?",
+            IntentLevel.HIGH_INTENT: "Amazing! I'd love to help you get started with Inflix. Could I get your name first?",
+            IntentLevel.READY_TO_BUY: "Fantastic! Let's get you set up with Inflix right away. Could I get your name?",
         }
-        return fallbacks.get(intent, "Thank you for your interest in Inflix! How can I help you today?")
+        return fallbacks.get(intent, "Hi! I'm the Inflix AI Assistant. How can I help you today?")
