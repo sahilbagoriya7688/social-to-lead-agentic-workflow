@@ -2,8 +2,6 @@
 """
 Social-to-Lead Agentic Workflow - CLI Entry Point
 ServiceHive Machine Learning Internship Assignment
-
-This script runs the conversational AI agent in a terminal/CLI mode.
 """
 
 import os
@@ -29,9 +27,9 @@ def print_banner():
     banner = Text()
     banner.append("Inflix AI Assistant\n", style="bold cyan")
     banner.append("Social-to-Lead Agentic Workflow\n", style="bold white")
-    banner.append("Powered by ServiceHive", style="dim")
-    
-    console.print(Panel(banner, title="[bold green]Welcome[/bold green]", 
+    banner.append("Powered by Google Gemini", style="dim")
+
+    console.print(Panel(banner, title="[bold green]Welcome[/bold green]",
                         border_style="green"))
     console.print()
     console.print("[dim]Type 'quit' or 'exit' to end the conversation.[/dim]")
@@ -44,10 +42,10 @@ def print_agent_response(response: dict):
     console.print()
     console.print(Panel(
         response["message"],
-        title=f"[bold cyan]Inflix Assistant[/bold cyan]",
+        title="[bold cyan]Inflix Assistant[/bold cyan]",
         border_style="cyan"
     ))
-    
+
     intent = response.get("intent", "UNKNOWN")
     intent_colors = {
         "BROWSING": "dim",
@@ -58,10 +56,10 @@ def print_agent_response(response: dict):
     }
     color = intent_colors.get(intent, "white")
     console.print(f"  [dim]Intent detected:[/dim] [{color}]{intent}[/{color}]")
-    
+
     if response.get("tools_used"):
         console.print(f"  [dim]Tools used:[/dim] [green]{', '.join(response['tools_used'])}[/green]")
-    
+
     if response.get("lead_captured"):
         console.print()
         console.print(Panel(
@@ -79,7 +77,7 @@ def show_leads(orchestrator: AgentOrchestrator):
     if not leads:
         console.print("[yellow]No leads captured yet.[/yellow]")
         return
-    
+
     console.print(f"\n[bold green]Captured Leads ({len(leads)}):[/bold green]")
     for i, lead in enumerate(leads, 1):
         console.print(f"\n[bold]{i}. {lead.get('name', 'Unknown')}[/bold]")
@@ -91,39 +89,37 @@ def show_leads(orchestrator: AgentOrchestrator):
 
 def main():
     """Main entry point for the CLI chatbot."""
-    # Check for OpenAI API key
-    if not os.getenv("OPENAI_API_KEY"):
-        console.print("[bold red]Error:[/bold red] OPENAI_API_KEY not found in environment.")
-        console.print("Please copy .env.example to .env and add your OpenAI API key.")
+    # ✅ FIXED: Check for GEMINI_API_KEY (not OPENAI_API_KEY)
+    if not os.getenv("GEMINI_API_KEY"):
+        console.print("[bold red]Error:[/bold red] GEMINI_API_KEY not found in environment.")
+        console.print("Please copy .env.example to .env and add your Gemini API key.")
+        console.print("Get your free key at: [link]https://aistudio.google.com[/link]")
         sys.exit(1)
-    
+
     print_banner()
-    
-    # Initialize the orchestrator
+
     console.print("[dim]Initializing agent...[/dim]")
     orchestrator = AgentOrchestrator()
     console.print("[dim]Agent ready!\n[/dim]")
-    
-    # Main conversation loop
+
     while True:
         try:
             user_input = console.input("[bold white]You:[/bold white] ").strip()
-            
+
             if not user_input:
                 continue
-            
+
             if user_input.lower() in ["quit", "exit", "bye"]:
                 console.print("\n[bold cyan]Thanks for chatting! Goodbye! 👋[/bold cyan]")
                 break
-            
+
             if user_input.lower() == "leads":
                 show_leads(orchestrator)
                 continue
-            
-            # Process the message through the agent
+
             response = orchestrator.process_message(user_input)
             print_agent_response(response)
-            
+
         except KeyboardInterrupt:
             console.print("\n\n[bold cyan]Session ended. Goodbye! 👋[/bold cyan]")
             break
@@ -134,3 +130,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
