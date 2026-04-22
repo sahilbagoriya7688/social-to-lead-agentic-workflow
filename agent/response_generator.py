@@ -6,7 +6,9 @@ based on RAG context, intent level, and conversation history.
 import os
 import logging
 from typing import List, Dict, Any
-import google.generativeai as genai
+
+# ✅ FIXED: Use new google-genai SDK instead of deprecated google.generativeai
+from google import genai
 
 from agent.intent_detector import IntentLevel
 
@@ -49,12 +51,14 @@ class ResponseGenerator:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-            self.model = genai.GenerativeModel(model_name=model_name)
-            logger.info(f"ResponseGenerator initialized with model: {model_name}")
+            # ✅ FIXED: New SDK initialization
+            self.client = genai.Client(api_key=api_key)
+            # ✅ FIXED: Updated model name
+            self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+            logger.info(f"ResponseGenerator initialized with model: {self.model_name}")
         else:
-            self.model = None
+            self.client = None
+            self.model_name = None
             logger.warning("GEMINI_API_KEY not set, responses will use fallback")
 
     def generate(
@@ -66,11 +70,10 @@ class ResponseGenerator:
         tool_results: Dict[str, Any] = None
     ) -> str:
         """Generate a response using Gemini with full context."""
-        if not self.model:
+        if not self.client:
             return self._fallback_response(user_message, intent)
 
         try:
-            # Build prompt
             context_parts = [SYSTEM_PROMPT]
 
             if rag_context:
@@ -93,8 +96,11 @@ class ResponseGenerator:
             context_parts.append(f"\nUser: {user_message}\nAssistant:")
             full_prompt = "\n".join(context_parts)
 
-            # Call Gemini API
-            response = self.model.generate_content(full_prompt)
+            # ✅ FIXED: New SDK call syntax
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=full_prompt
+            )
             text = response.text.strip()
             if text:
                 return text
@@ -136,3 +142,4 @@ class ResponseGenerator:
             IntentLevel.READY_TO_BUY: "Fantastic! Let's get you set up with Inflix right away. Could I get your name?",
         }
         return fallbacks.get(intent, "Hi! I'm the Inflix AI Assistant. How can I help you today?")
+
